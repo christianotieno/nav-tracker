@@ -62,7 +62,7 @@ func (nt *NavigationTracker) GetVisitorStats(url string) *models.VisitorStats {
 	return &models.VisitorStats{
 		URL:              url,
 		DistinctVisitors: distinctVisitors,
-		TotalPageViews:   0, 
+		TotalPageViews:   0,
 		LastUpdated:      time.Now().UTC(),
 	}
 }

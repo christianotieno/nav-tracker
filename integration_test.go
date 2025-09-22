@@ -129,7 +129,7 @@ func TestFullSystemIntegration(t *testing.T) {
 		events := []string{
 			"https://EXAMPLE.COM/normalize/",
 			"https://example.com/normalize",
-			"https://example.com/normalize/", 
+			"https://example.com/normalize/",
 		}
 
 		for i, url := range events {
@@ -163,7 +163,7 @@ func TestFullSystemIntegration(t *testing.T) {
 		}
 
 		event := models.NavigationEvent{
-			VisitorID: "", 
+			VisitorID: "",
 			URL:       "https://example.com/test",
 		}
 		jsonData, _ := json.Marshal(event)

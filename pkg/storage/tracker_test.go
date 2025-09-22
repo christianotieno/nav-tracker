@@ -155,29 +155,29 @@ func TestNavigationTracker_URLNormalization(t *testing.T) {
 
 func TestNavigationTracker_ConcurrentAccess(t *testing.T) {
 	tracker := NewNavigationTracker()
-	
+
 	var wg sync.WaitGroup
 	numGoroutines := 10
-	
+
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			
+
 			event := &models.NavigationEvent{
 				VisitorID: "visitor" + string(rune('0'+id)),
 				URL:       "https://example.com/page1",
 			}
-			
+
 			err := tracker.RecordEvent(event)
 			if err != nil {
 				t.Errorf("Failed to record event in goroutine %d: %v", id, err)
 			}
 		}(i)
 	}
-	
+
 	wg.Wait()
-	
+
 	count := tracker.GetDistinctVisitors("https://example.com/page1")
 	if count != numGoroutines {
 		t.Errorf("Expected %d distinct visitors, got %d", numGoroutines, count)

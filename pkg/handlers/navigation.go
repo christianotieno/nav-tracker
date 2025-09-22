@@ -55,20 +55,19 @@ func StatsHandler(tracker *storage.NavigationTracker) http.HandlerFunc {
 		distinctVisitors := tracker.GetDistinctVisitors(urlParam)
 
 		response := map[string]interface{}{
-			"url":                urlParam,
-			"distinct_visitors":  distinctVisitors,
+			"url":               urlParam,
+			"distinct_visitors": distinctVisitors,
 		}
 
 		respondWithJSON(w, http.StatusOK, response)
 	}
 }
 
-
 // Helper functions for JSON responses
 func respondWithJSON(w http.ResponseWriter, statusCode int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	
+
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}
@@ -78,6 +77,6 @@ func respondWithError(w http.ResponseWriter, statusCode int, message string) {
 	errorResponse := map[string]interface{}{
 		"error": message,
 	}
-	
+
 	respondWithJSON(w, statusCode, errorResponse)
 }

@@ -43,7 +43,6 @@ func NewServer(port string) *Server {
 	return server
 }
 
-
 func (s *Server) Start() error {
 	go func() {
 		log.Printf("Server starting on port %s", s.port)

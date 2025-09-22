@@ -46,17 +46,19 @@ test: ## Run all tests
 test-coverage: ## Run tests with coverage and generate HTML report
 	@echo "Running tests with coverage..."
 	go test -coverprofile=coverage.out ./...
+
+lint: ## Run the linter
+	@echo "Running linter..."
+	@echo "Running go fmt..."
+	@go fmt ./...
+	@echo "Running go vet..."
+	@go vet ./...
+	@echo "✓ Linting completed"
+
 docker-build: ## Build the Docker image
 	@echo "Building Docker image..."
 	docker build -t $(BINARY_NAME) .
 	@echo "✓ Docker image built: $(BINARY_NAME)"
-	@echo "Running linter..."
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		golangci-lint run; \
-	else \
-		echo "⚠️  WARNING: golangci-lint not installed, skipping linting"; \
-		echo "   Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
-	fi
 
 run: build ## Build and run the application
 	@echo "Starting $(BINARY_NAME) on port $(PORT)..."
@@ -66,8 +68,3 @@ run: build ## Build and run the application
 run-dev: ## Run the application in development mode
 	@echo "Starting $(BINARY_NAME) in development mode..."
 	go run .
-
-docker-build: ## Build the Docker image
-	@echo "Building Docker image..."
-	docker build -t $(BINARY_NAME) .
-	@echo "✓

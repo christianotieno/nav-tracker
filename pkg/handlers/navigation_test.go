@@ -75,7 +75,7 @@ func TestIngestHandler_ValidationError(t *testing.T) {
 	handler := IngestHandler(tracker)
 
 	event := models.NavigationEvent{
-		VisitorID: "", 
+		VisitorID: "",
 		URL:       "https://example.com/page1",
 	}
 
@@ -115,7 +115,7 @@ func TestIngestHandler_DuplicateVisitors(t *testing.T) {
 	}
 
 	jsonData, _ := json.Marshal(event)
-	
+
 	req1 := httptest.NewRequest("POST", "/ingest", bytes.NewBuffer(jsonData))
 	req1.Header.Set("Content-Type", "application/json")
 
@@ -145,14 +145,21 @@ func TestStatsHandler_Success(t *testing.T) {
 	handler := StatsHandler(tracker)
 
 	// Add some test data
-	tracker.RecordEvent(&models.NavigationEvent{
+	err := tracker.RecordEvent(&models.NavigationEvent{
 		VisitorID: "visitor1",
 		URL:       "https://example.com/page1",
 	})
-	tracker.RecordEvent(&models.NavigationEvent{
+	if err != nil {
+		t.Fatalf("Failed to record event: %v", err)
+	}
+
+	err = tracker.RecordEvent(&models.NavigationEvent{
 		VisitorID: "visitor2",
 		URL:       "https://example.com/page1",
 	})
+	if err != nil {
+		t.Fatalf("Failed to record event: %v", err)
+	}
 
 	req := httptest.NewRequest("GET", "/stats?url=https://example.com/page1", nil)
 	w := httptest.NewRecorder()

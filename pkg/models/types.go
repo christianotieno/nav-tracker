@@ -33,11 +33,11 @@ func (ne *NavigationEvent) Validate() error {
 	if ne.VisitorID == "" {
 		return fmt.Errorf("visitor_id is required")
 	}
-	
+
 	if len(ne.VisitorID) < MinVisitorIDLength || len(ne.VisitorID) > MaxVisitorIDLength {
 		return fmt.Errorf("visitor_id must be between %d and %d characters", MinVisitorIDLength, MaxVisitorIDLength)
 	}
-	
+
 	if !visitorIDRegex.MatchString(ne.VisitorID) {
 		return fmt.Errorf("visitor_id contains invalid characters")
 	}
@@ -45,11 +45,11 @@ func (ne *NavigationEvent) Validate() error {
 	if ne.URL == "" {
 		return fmt.Errorf("url is required")
 	}
-	
+
 	if len(ne.URL) > MaxURLLength {
 		return fmt.Errorf("url exceeds maximum length of %d characters", MaxURLLength)
 	}
-	
+
 	if _, err := url.ParseRequestURI(ne.URL); err != nil {
 		return fmt.Errorf("url is not a valid URI")
 	}
