@@ -2,66 +2,81 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"nav-tracker/pkg/models"
 	"nav-tracker/pkg/storage"
 )
 
+// IngestHandler handles POST requests to record navigation events
 func IngestHandler(tracker *storage.NavigationTracker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
-		
+
 		var event models.NavigationEvent
 		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			respondWithError(w, http.StatusBadRequest, "Invalid JSON format")
 			return
 		}
-		
-		if event.VisitorID == "" || event.URL == "" {
-			http.Error(w, "Missing required fields: visitor_id and url", http.StatusBadRequest)
+
+		if err := tracker.RecordEvent(&event); err != nil {
+			log.Printf("Error recording event: %v", err)
+			respondWithError(w, http.StatusInternalServerError, "Failed to record event")
 			return
 		}
-		
-		tracker.RecordEvent(event.VisitorID, event.URL)
-		
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+
+		response := map[string]interface{}{
+			"success": true,
+			"message": "Event recorded successfully",
+		}
+
+		respondWithJSON(w, http.StatusCreated, response)
 	}
 }
 
+// StatsHandler handles GET requests to retrieve visitor statistics for a URL
 func StatsHandler(tracker *storage.NavigationTracker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			respondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
 			return
 		}
-		
-		url := r.URL.Query().Get("url")
-		if url == "" {
-			http.Error(w, "Missing required query parameter: url", http.StatusBadRequest)
+
+		urlParam := r.URL.Query().Get("url")
+		if urlParam == "" {
+			respondWithError(w, http.StatusBadRequest, "Missing required query parameter: url")
 			return
 		}
-		
-		distinctVisitors := tracker.GetDistinctVisitors(url)
-		
-		stats := models.VisitorStats{
-			URL:              url,
-			DistinctVisitors: distinctVisitors,
+
+		distinctVisitors := tracker.GetDistinctVisitors(urlParam)
+
+		response := map[string]interface{}{
+			"url":               urlParam,
+			"distinct_visitors": distinctVisitors,
 		}
-		
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(stats)
+
+		respondWithJSON(w, http.StatusOK, response)
 	}
 }
 
-func HealthHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
+// Helper functions for JSON responses
+func respondWithJSON(w http.ResponseWriter, statusCode int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("Error encoding JSON response: %v", err)
 	}
+}
+
+func respondWithError(w http.ResponseWriter, statusCode int, message string) {
+	errorResponse := map[string]interface{}{
+		"error": message,
+	}
+
+	respondWithJSON(w, statusCode, errorResponse)
 }

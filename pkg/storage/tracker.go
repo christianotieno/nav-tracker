@@ -1,42 +1,68 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
+	"time"
+
+	"nav-tracker/pkg/models"
 )
 
-// NavigationTracker handles storage and retrieval of navigation events
 type NavigationTracker struct {
-	visitors map[string]map[string]bool
-	mutex    sync.RWMutex
+	urlVisitors map[string]map[string]bool
+	mutex       sync.RWMutex
 }
 
-// NewNavigationTracker creates a new instance of NavigationTracker
 func NewNavigationTracker() *NavigationTracker {
 	return &NavigationTracker{
-		visitors: make(map[string]map[string]bool),
+		urlVisitors: make(map[string]map[string]bool),
 	}
 }
 
-// RecordEvent records a navigation event for a visitor
-func (nt *NavigationTracker) RecordEvent(visitorID, url string) {
+func (nt *NavigationTracker) RecordEvent(event *models.NavigationEvent) error {
 	nt.mutex.Lock()
 	defer nt.mutex.Unlock()
-	
-	if nt.visitors[url] == nil {
-		nt.visitors[url] = make(map[string]bool)
+
+	if err := event.Validate(); err != nil {
+		return fmt.Errorf("invalid event: %w", err)
 	}
-	
-	nt.visitors[url][visitorID] = true
+
+	event.NormalizeURL()
+	event.SetDefaults()
+
+	if nt.urlVisitors[event.URL] == nil {
+		nt.urlVisitors[event.URL] = make(map[string]bool)
+	}
+
+	nt.urlVisitors[event.URL][event.VisitorID] = true
+
+	return nil
 }
 
-// GetDistinctVisitors returns the count of distinct visitors for a given URL
 func (nt *NavigationTracker) GetDistinctVisitors(url string) int {
 	nt.mutex.RLock()
 	defer nt.mutex.RUnlock()
-	
-	if visitors, exists := nt.visitors[url]; exists {
+
+	if visitors, exists := nt.urlVisitors[url]; exists {
 		return len(visitors)
 	}
-	
+
 	return 0
+}
+
+func (nt *NavigationTracker) GetVisitorStats(url string) *models.VisitorStats {
+	nt.mutex.RLock()
+	defer nt.mutex.RUnlock()
+
+	distinctVisitors := 0
+	if visitors, exists := nt.urlVisitors[url]; exists {
+		distinctVisitors = len(visitors)
+	}
+
+	return &models.VisitorStats{
+		URL:              url,
+		DistinctVisitors: distinctVisitors,
+		TotalPageViews:   0,
+		LastUpdated:      time.Now().UTC(),
+	}
 }
