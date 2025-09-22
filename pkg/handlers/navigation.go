@@ -1,18 +1,21 @@
-package main
+package handlers
 
 import (
 	"encoding/json"
 	"net/http"
+
+	"nav-tracker/pkg/models"
+	"nav-tracker/pkg/storage"
 )
 
-func IngestHandler(tracker *NavigationTracker) http.HandlerFunc {
+func IngestHandler(tracker *storage.NavigationTracker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 		
-		var event NavigationEvent
+		var event models.NavigationEvent
 		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
@@ -31,7 +34,7 @@ func IngestHandler(tracker *NavigationTracker) http.HandlerFunc {
 	}
 }
 
-func StatsHandler(tracker *NavigationTracker) http.HandlerFunc {
+func StatsHandler(tracker *storage.NavigationTracker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -46,12 +49,19 @@ func StatsHandler(tracker *NavigationTracker) http.HandlerFunc {
 		
 		distinctVisitors := tracker.GetDistinctVisitors(url)
 		
-		stats := VisitorStats{
+		stats := models.VisitorStats{
 			URL:              url,
 			DistinctVisitors: distinctVisitors,
 		}
 		
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(stats)
+	}
+}
+
+func HealthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "healthy"})
 	}
 }

@@ -1,4 +1,4 @@
-package main
+package models
 
 type NavigationEvent struct {
 	VisitorID string `json:"visitor_id"`
