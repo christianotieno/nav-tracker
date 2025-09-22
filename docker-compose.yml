@@ -5,17 +5,9 @@ services:
     build: .
     ports:
       - "8080:8080"
-    environment:
-      - PORT=8080
-      - MAX_MEMORY_USAGE=200000000  
-      - CLEANUP_INTERVAL=5m
-      - MAX_URLS=10000
-      - MAX_VISITORS_PER_URL=100000
-      - ENABLE_METRICS=true
-      - ENABLE_DETAILED_STATS=true
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/v1/health"]
+      test: ["CMD", "/nav-tracker", "-health-check"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -26,11 +18,12 @@ services:
       - "traefik.http.services.nav-tracker.loadbalancer.server.port=8080"
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.0
     ports:
       - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -40,11 +33,12 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.4.3
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:?set-in-.env}
+
     volumes:
       - grafana-storage:/var/lib/grafana
       - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
@@ -53,3 +47,4 @@ services:
 
 volumes:
   grafana-storage:
+  prometheus-data:

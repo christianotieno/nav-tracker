@@ -5,9 +5,13 @@ import (
 	"time"
 )
 
+const responseTimesBufferSize = 1000
+
 type MetricsCollector struct {
 	requestCount    int64
 	responseTimes   []time.Duration
+	responseIndex   int // circular buffer index
+	responseCount   int // actual count of items in buffer
 	errorCount      int64
 	lastRequestTime time.Time
 	startTime       time.Time
@@ -41,7 +45,9 @@ type PerformanceMetrics struct {
 
 func NewMetricsCollector() *MetricsCollector {
 	return &MetricsCollector{
-		responseTimes:   make([]time.Duration, 0, 1000),
+		responseTimes:   make([]time.Duration, responseTimesBufferSize),
+		responseIndex:   0,
+		responseCount:   0,
 		endpointMetrics: make(map[string]*EndpointMetrics),
 		statusCodes:     make(map[int]int64),
 		startTime:       time.Now(),
@@ -55,10 +61,13 @@ func (mc *MetricsCollector) RecordRequest(endpoint string, responseTime time.Dur
 	mc.requestCount++
 	mc.lastRequestTime = time.Now()
 
-	if len(mc.responseTimes) >= 1000 {
-		mc.responseTimes = mc.responseTimes[1:]
+	if mc.responseCount < responseTimesBufferSize {
+		mc.responseTimes[mc.responseCount] = responseTime
+		mc.responseCount++
+	} else {
+		mc.responseTimes[mc.responseIndex] = responseTime
+		mc.responseIndex = (mc.responseIndex + 1) % responseTimesBufferSize
 	}
-	mc.responseTimes = append(mc.responseTimes, responseTime)
 
 	if statusCode >= 400 {
 		mc.errorCount++
@@ -98,12 +107,23 @@ func (mc *MetricsCollector) GetMetrics() *PerformanceMetrics {
 	var minResponseTime time.Duration
 	var maxResponseTime time.Duration
 
-	if len(mc.responseTimes) > 0 {
+	if mc.responseCount > 0 {
 		total := time.Duration(0)
-		minResponseTime = mc.responseTimes[0]
-		maxResponseTime = mc.responseTimes[0]
+		// Compute the correct order for the circular buffer
+		var firstIdx int
+		if mc.responseCount < responseTimesBufferSize {
+			firstIdx = 0
+		} else {
+			firstIdx = mc.responseIndex
+		}
 
-		for _, rt := range mc.responseTimes {
+		// Get the first value for min/max initialization
+		minResponseTime = mc.responseTimes[firstIdx]
+		maxResponseTime = mc.responseTimes[firstIdx]
+
+		for i := 0; i < mc.responseCount; i++ {
+			idx := (firstIdx + i) % responseTimesBufferSize
+			rt := mc.responseTimes[idx]
 			total += rt
 			if rt < minResponseTime {
 				minResponseTime = rt
@@ -113,7 +133,7 @@ func (mc *MetricsCollector) GetMetrics() *PerformanceMetrics {
 			}
 		}
 
-		avgResponseTime = total / time.Duration(len(mc.responseTimes))
+		avgResponseTime = total / time.Duration(mc.responseCount)
 	}
 
 	uptime := time.Since(mc.startTime)
@@ -163,7 +183,13 @@ func (mc *MetricsCollector) Reset() {
 	defer mc.mutex.Unlock()
 
 	mc.requestCount = 0
-	mc.responseTimes = mc.responseTimes[:0]
+	// Reset circular buffer state
+	mc.responseIndex = 0
+	mc.responseCount = 0
+	// Optionally clear the buffer (not strictly necessary, but for hygiene)
+	for i := range mc.responseTimes {
+		mc.responseTimes[i] = 0
+	}
 	mc.errorCount = 0
 	mc.lastRequestTime = time.Time{}
 	mc.startTime = time.Now()

@@ -28,7 +28,8 @@ func TestMetricsCollector_RecordRequest(t *testing.T) {
 
 	ingestMetrics := metrics.EndpointMetrics["/api/v1/ingest"]
 	if ingestMetrics == nil {
-		t.Fatal("Expected ingest endpoint metrics")
+		t.Fatal("Expected ingest endpoint metrics, got nil")
+		return
 	}
 
 	if ingestMetrics.RequestCount != 2 {
@@ -139,7 +140,8 @@ func TestMetricsCollector_GetEndpointMetrics(t *testing.T) {
 
 	metrics := collector.GetEndpointMetrics("/api/v1/ingest")
 	if metrics == nil {
-		t.Fatal("Expected endpoint metrics")
+		t.Fatal("metrics is nil, possible nil pointer dereference")
+		return
 	}
 
 	if metrics.RequestCount != 2 {
